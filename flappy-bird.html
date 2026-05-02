@@ -527,9 +527,9 @@ let save = initProfiles();
 
 // ─── Zones ───
 const ZONES = [
-    { name: 'Whispering Fields', theme: 'forest', pipes: 5, segments: 18, bossHP: 30, boss: true, diff: 1,    bg: ['#1a2a1a','#0d1a0d'],
+    { name: 'Whispering Fields', theme: 'forest', pipes: 5, segments: 20, bossHP: 40, boss: true, diff: 1,    bg: ['#1a2a1a','#0d1a0d'],
       bossName: 'The Warden',   bossBarColor: '#44cc66' },
-    { name: 'Crystal Caverns',   theme: 'cave',   pipes: 5, segments: 30, bossHP: 70, boss: true, diff: 1.3,  bg: ['#1a1528','#0d0a18'],
+    { name: 'Crystal Caverns',   theme: 'cave',   pipes: 5, segments: 26, bossHP: 55, boss: true, diff: 1.15, bg: ['#1a1528','#0d0a18'],
       bossName: 'The Prism',    bossBarColor: '#cc66ff' },
     { name: 'Scorched Wastes',   theme: 'desert', pipes: 5, segments: 35, bossHP: 85,  boss: true, diff: 1.45, bg: ['#2a1a10','#1a0d08'],
       bossName: 'The Cinder',   bossBarColor: '#ff6622' },
@@ -1415,28 +1415,28 @@ function update() {
             // ─── Biome-specific movement ───
             if (theme === 'forest') {
                 // Warden: slow organic bob with occasional lunge
-                const baseAmp = boss.phase === 1 ? 70 : (boss.phase === 2 ? 110 : 150);
+                const baseAmp = boss.phase === 1 ? 80 : (boss.phase === 2 ? 120 : 160);
                 boss.y = canvas.height / 2 + Math.sin(frames * 0.025) * baseAmp;
-                if (boss.phase === 3 && boss.timer % 220 === 0) {
+                if (boss.phase === 3 && boss.timer % 180 === 0) {
                     // Lunge: quick burst of vertical speed then settle
-                    boss.lungeY = (Math.random() - 0.5) * 160;
+                    boss.lungeY = (Math.random() - 0.5) * 200;
                 }
                 if (boss.lungeY !== undefined) {
-                    boss.y += boss.lungeY * 0.04;
-                    boss.lungeY *= 0.93;
+                    boss.y += boss.lungeY * 0.05;
+                    boss.lungeY *= 0.92;
                     if (Math.abs(boss.lungeY) < 1) boss.lungeY = undefined;
                 }
             } else if (theme === 'cave') {
                 // Prism: teleports between 3 vertical positions
-                const positions = [canvas.height * 0.3, canvas.height * 0.5, canvas.height * 0.7];
-                if (boss.phase === 3) positions.push(canvas.height * 0.2, canvas.height * 0.8);
+                const positions = [canvas.height * 0.35, canvas.height * 0.5, canvas.height * 0.65];
+                if (boss.phase === 3) positions.push(canvas.height * 0.25, canvas.height * 0.75);
                 if (!boss.teleportTimer || boss.teleportTimer <= 0) {
                     boss.teleportTarget = positions[Math.floor(Math.random() * positions.length)];
-                    boss.teleportTimer = boss.phase === 1 ? 150 : (boss.phase === 2 ? 100 : 70);
+                    boss.teleportTimer = boss.phase === 1 ? 180 : (boss.phase === 2 ? 120 : 85);
                 }
                 boss.teleportTimer--;
                 // Smooth glide to target, not instant teleport
-                boss.y += (boss.teleportTarget - boss.y) * 0.04;
+                boss.y += (boss.teleportTarget - boss.y) * 0.035;
             } else if (theme === 'desert') {
                 // Cinder: figure-8 with increasing speed
                 const speed = boss.phase === 1 ? 0.025 : (boss.phase === 2 ? 0.04 : 0.055);
@@ -1460,47 +1460,47 @@ function update() {
             // ─── Biome-specific attack patterns ───
             if (theme === 'forest') {
                 // Warden: pollen clouds (slow wide) + vine spears (fast narrow) + spore burst
-                const cloudRate = boss.phase === 1 ? 115 : (boss.phase === 2 ? 80 : 55);
-                const vineRate  = boss.phase === 1 ? 220 : (boss.phase === 2 ? 140 : 90);
-                const burstRate = boss.phase === 3 ? 160 : 99999;
+                const cloudRate = boss.phase === 1 ? 100 : (boss.phase === 2 ? 65 : 40);
+                const vineRate  = boss.phase === 1 ? 180 : (boss.phase === 2 ? 110 : 65);
+                const burstRate = boss.phase === 3 ? 120 : 99999;
 
                 if (boss.timer % cloudRate === 0) {
                     for (let i = -1; i <= 1; i++) {
-                        boss.attacks.push({ x: boss.x, y: boss.y + i * 16, vx: -2.8, vy: Math.sin(frames * 0.02) * 0.6, cloud: true });
+                        boss.attacks.push({ x: boss.x, y: boss.y + i * 18, vx: -3, vy: Math.sin(frames * 0.02) * 0.8, cloud: true });
                     }
                 }
                 if (boss.timer % vineRate === 0) {
                     const angle = Math.atan2(player.y - boss.y, player.x - boss.x);
-                    boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(angle) * -5.0, vy: Math.sin(angle) * -5.0 });
+                    boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(angle) * -5.5, vy: Math.sin(angle) * -5.5 });
                 }
                 if (boss.timer % burstRate === 0) {
-                    for (let i = 0; i < 10; i++) {
-                        const a = (i / 10) * Math.PI * 2;
-                        boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * -3.2, vy: Math.sin(a) * 3.2 });
+                    for (let i = 0; i < 12; i++) {
+                        const a = (i / 12) * Math.PI * 2;
+                        boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * -3.5, vy: Math.sin(a) * 3.5 });
                     }
                 }
 
             } else if (theme === 'cave') {
                 // Prism: crystal shards (straight) + refracted beams (curved) + prism overload
-                const shardRate = boss.phase === 1 ? 90 : (boss.phase === 2 ? 55 : 30);
-                const beamRate  = boss.phase === 1 ? 200 : (boss.phase === 2 ? 130 : 80);
-                const overload  = boss.phase === 3 ? 140 : 99999;
+                const shardRate = boss.phase === 1 ? 110 : (boss.phase === 2 ? 70 : 45);
+                const beamRate  = boss.phase === 1 ? 250 : (boss.phase === 2 ? 160 : 100);
+                const overload  = boss.phase === 3 ? 180 : 99999;
 
                 if (boss.timer % shardRate === 0) {
                     const spread = boss.phase === 1 ? 1 : (boss.phase === 2 ? 3 : 5);
                     for (let i = -spread; i <= spread; i++) {
-                        boss.attacks.push({ x: boss.x, y: boss.y, vx: -5, vy: i * 1.5 + Math.sin(frames * 0.05) * 2 });
+                        boss.attacks.push({ x: boss.x, y: boss.y, vx: -4.5, vy: i * 1.4 + Math.sin(frames * 0.05) * 1.5 });
                     }
                 }
                 if (boss.timer % beamRate === 0) {
                     // Refracted beam bends slightly toward player
-                    const dy = (player.y - boss.y) * 0.003;
-                    boss.attacks.push({ x: boss.x, y: boss.y, vx: -5.5, vy: dy, beam: true });
+                    const dy = (player.y - boss.y) * 0.002;
+                    boss.attacks.push({ x: boss.x, y: boss.y, vx: -5.0, vy: dy, beam: true });
                 }
                 if (boss.timer % overload === 0) {
-                    for (let i = 0; i < 16; i++) {
-                        const a = (i / 16) * Math.PI * 2;
-                        boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * -4, vy: Math.sin(a) * 4 });
+                    for (let i = 0; i < 14; i++) {
+                        const a = (i / 14) * Math.PI * 2;
+                        boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * -3.8, vy: Math.sin(a) * 3.8 });
                     }
                 }
 
