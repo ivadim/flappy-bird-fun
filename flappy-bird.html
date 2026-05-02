@@ -527,10 +527,14 @@ let save = initProfiles();
 
 // ─── Zones ───
 const ZONES = [
-    { name: 'Whispering Fields', theme: 'forest', pipes: 5, segments: 20, bossHP: 40, boss: true, diff: 1,    bg: ['#1a2a1a','#0d1a0d'] },
-    { name: 'Crystal Caverns',   theme: 'cave',   pipes: 5, segments: 30, bossHP: 70, boss: true, diff: 1.3,  bg: ['#1a1528','#0d0a18'] },
-    { name: 'Scorched Wastes',   theme: 'desert', pipes: 5, segments: 40, bossHP: 100, boss: true, diff: 1.6, bg: ['#2a1a10','#1a0d08'] },
-    { name: 'Abyssal Spire',     theme: 'void',   pipes: 5, segments: 50, bossHP: 140, boss: true, diff: 2.0, bg: ['#0d0a1a','#050510'] },
+    { name: 'Whispering Fields', theme: 'forest', pipes: 5, segments: 20, bossHP: 40, boss: true, diff: 1,    bg: ['#1a2a1a','#0d1a0d'],
+      bossName: 'The Warden',   bossBarColor: '#44cc66' },
+    { name: 'Crystal Caverns',   theme: 'cave',   pipes: 5, segments: 30, bossHP: 70, boss: true, diff: 1.3,  bg: ['#1a1528','#0d0a18'],
+      bossName: 'The Prism',    bossBarColor: '#cc66ff' },
+    { name: 'Scorched Wastes',   theme: 'desert', pipes: 5, segments: 40, bossHP: 100, boss: true, diff: 1.6, bg: ['#2a1a10','#1a0d08'],
+      bossName: 'The Cinder',   bossBarColor: '#ff6622' },
+    { name: 'Abyssal Spire',     theme: 'void',   pipes: 5, segments: 50, bossHP: 140, boss: true, diff: 2.0, bg: ['#0d0a1a','#050510'],
+      bossName: 'The Leviathan',bossBarColor: '#aa44ff' },
 ];
 
 // ─── Achievements ───
@@ -699,6 +703,11 @@ function spawnBoss() {
         state: 'enter',
     };
     document.getElementById('bossBar').classList.add('active');
+    document.getElementById('bossName').textContent = zone.bossName;
+    document.getElementById('bossName').style.color = zone.bossBarColor;
+    document.getElementById('bossName').style.textShadow = `0 0 10px ${zone.bossBarColor}80`;
+    document.getElementById('bossFill').style.background = `linear-gradient(90deg, ${zone.bossBarColor}88, ${zone.bossBarColor})`;
+    document.getElementById('bossFill').style.boxShadow = `0 0 12px ${zone.bossBarColor}66`;
 }
 
 // ─── Drawing ───
@@ -933,59 +942,234 @@ function drawPowerup(p) {
 function drawBoss() {
     if (!boss) return;
     const b = boss;
+    const theme = ZONES[currentZone].theme;
     ctx.save();
     ctx.translate(b.x, b.y);
 
-    // Phase-based colors
-    const colors = {
-        1: { body: '#2a0a1a', stroke: '#ff4466', glow: '#ff2244', eye: '#ff2244', pupil: '#ffaa88' },
-        2: { body: '#1a0a2a', stroke: '#cc44ff', glow: '#aa22ff', eye: '#cc44ff', pupil: '#eebbff' },
-        3: { body: '#2a1205', stroke: '#ff8844', glow: '#ff6622', eye: '#ffaa00', pupil: '#ffeedd' },
-    };
-    const c = colors[b.phase] || colors[1];
+    const hpPct = b.hp / b.maxHp;
+    const phase = hpPct > 0.66 ? 1 : (hpPct > 0.33 ? 2 : 3);
 
-    // Boss body
-    ctx.fillStyle = c.body;
-    ctx.strokeStyle = c.stroke;
-    ctx.lineWidth = 2;
-    ctx.shadowColor = c.glow;
-    ctx.shadowBlur = 15 + b.phase * 5;
+    if (theme === 'forest') {
+        // ─── THE WARDEN — Spore Core ───
+        const c = phase === 1 ? { body:'#1a3a1a', glow:'#44aa44', core:'#66cc66', dark:'#113311' }
+              : phase === 2 ? { body:'#2a3a10', glow:'#88cc22', core:'#aadd44', dark:'#1a2a08' }
+              :               { body:'#3a1a1a', glow:'#cc4444', core:'#ff6644', dark:'#2a0a0a' };
 
-    // Core pulse — faster in later phases
-    const pulseSpeed = b.phase === 3 ? 0.08 : (b.phase === 2 ? 0.06 : 0.05);
-    const pulse = 1 + Math.sin(frames * pulseSpeed) * 0.1;
-    ctx.beginPath();
-    ctx.arc(0, 0, 35 * pulse, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Eye
-    ctx.fillStyle = c.eye;
-    ctx.beginPath();
-    ctx.arc(0, 0, 12 + b.phase * 1.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = c.pupil;
-    ctx.beginPath();
-    ctx.arc(-3, -3, 4 + b.phase, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Spikes — rotate faster in later phases
-    const spikeCount = 6 + b.phase * 2;
-    const rotSpeed = b.phase === 3 ? 0.035 : (b.phase === 2 ? 0.025 : 0.018);
-    for (let i = 0; i < spikeCount; i++) {
-        const angle = (i / spikeCount) * Math.PI * 2 + frames * rotSpeed;
-        const r1 = 33 + b.phase * 2;
-        const r2 = 52 + b.phase * 4;
+        ctx.fillStyle = c.body;
+        ctx.shadowColor = c.glow;
+        ctx.shadowBlur = 18 + phase * 4;
+        const pulse = 1 + Math.sin(frames * 0.04) * 0.08;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * r1, Math.sin(angle) * r1);
-        ctx.lineTo(Math.cos(angle) * r2, Math.sin(angle) * r2);
+        ctx.arc(0, 0, 36 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ring of spore pods
+        const podCount = 5 + phase * 2;
+        for (let i = 0; i < podCount; i++) {
+            const a = (i / podCount) * Math.PI * 2 + frames * 0.012;
+            const r = 44 + Math.sin(frames * 0.03 + i) * 4;
+            ctx.fillStyle = c.core;
+            ctx.beginPath();
+            ctx.arc(Math.cos(a) * r, Math.sin(a) * r, 5 + phase, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Central eye (pollen sac)
+        ctx.fillStyle = c.core;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10 + phase * 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = c.dark;
+        ctx.beginPath();
+        ctx.arc(2, -2, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Vine tendrils
+        ctx.strokeStyle = c.glow;
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 4 + phase; i++) {
+            const a = (i / (4 + phase)) * Math.PI * 2 + frames * 0.015;
+            const w = 0.3 + phase * 0.1;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * 28, Math.sin(a) * 28);
+            ctx.quadraticCurveTo(
+                Math.cos(a + 0.5) * 55, Math.sin(a + 0.5) * 55,
+                Math.cos(a + frames * 0.008) * (50 + phase * 6), Math.sin(a + frames * 0.008) * (50 + phase * 6)
+            );
+            ctx.stroke();
+        }
+
+    } else if (theme === 'cave') {
+        // ─── THE PRISM — Crystal Core ───
+        const c = phase === 1 ? { body:'#221144', glow:'#8866ff', core:'#aa88ff', light:'#ddccff' }
+              : phase === 2 ? { body:'#110033', glow:'#cc55ff', core:'#ee88ff', light:'#ffccff' }
+              :               { body:'#1a0a2a', glow:'#ff44aa', core:'#ff6688', light:'#ffeeee' };
+
+        ctx.shadowColor = c.glow;
+        ctx.shadowBlur = 20 + phase * 5;
+
+        // Outer crystal ring
+        const facets = 6 + phase * 2;
+        const rot = frames * (phase === 3 ? 0.02 : (phase === 2 ? 0.015 : 0.01));
+        const r1 = 38 + Math.sin(frames * 0.05) * 3;
+        ctx.fillStyle = c.body;
+        ctx.strokeStyle = c.glow;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let i = 0; i <= facets; i++) {
+            const a = (i / facets) * Math.PI * 2 + rot;
+            const r = i % 2 === 0 ? r1 : r1 - 8;
+            ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
         ctx.stroke();
+
+        // Inner rotating gem
+        const innerRot = -frames * 0.025;
+        ctx.fillStyle = c.core;
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+            const a = (i / 4) * Math.PI * 2 + innerRot;
+            const r = 16 + phase * 2;
+            ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Light beam spokes
+        ctx.strokeStyle = c.light;
+        ctx.globalAlpha = 0.3 + Math.sin(frames * 0.06) * 0.15;
+        for (let i = 0; i < facets; i++) {
+            const a = (i / facets) * Math.PI * 2 + rot;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * 20, Math.sin(a) * 20);
+            ctx.lineTo(Math.cos(a) * (55 + phase * 8), Math.sin(a) * (55 + phase * 8));
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // Center pupil
+        ctx.fillStyle = c.light;
+        ctx.beginPath();
+        ctx.arc(0, 0, 5 + phase, 0, Math.PI * 2);
+        ctx.fill();
+
+    } else if (theme === 'desert') {
+        // ─── THE CINDER — Flame Skull ───
+        const c = phase === 1 ? { glow:'#cc7722', core:'#ffaa33', dark:'#551100' }
+              : phase === 2 ? { glow:'#ff5522', core:'#ff7733', dark:'#3a0a00' }
+              :               { glow:'#ff2222', core:'#ff4444', dark:'#2a0000' };
+
+        ctx.shadowColor = c.glow;
+        ctx.shadowBlur = 22 + phase * 6;
+
+        // Flame aura
+        ctx.fillStyle = c.glow;
+        const aura = 1 + Math.sin(frames * 0.07) * 0.12;
+        ctx.beginPath();
+        ctx.arc(0, 0, 40 * aura, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Skull shape (hex-ish)
+        ctx.fillStyle = c.dark;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + frames * 0.01;
+            const r = i % 2 === 0 ? 32 : 26;
+            ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Eye sockets
+        ctx.fillStyle = c.core;
+        [-1, 1].forEach(dir => {
+            ctx.beginPath();
+            ctx.arc(dir * 10, -4, 6 + phase, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Flame tongues
+        ctx.fillStyle = c.core;
+        for (let i = 0; i < 5 + phase * 2; i++) {
+            const a = (i / (5 + phase * 2)) * Math.PI * 2 + frames * 0.02;
+            const flicker = Math.sin(frames * 0.15 + i * 2) * 4;
+            const len = 20 + flicker + phase * 6;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * 30, Math.sin(a) * 30);
+            ctx.lineTo(Math.cos(a + 0.15) * (30 + len * 0.5), Math.sin(a + 0.15) * (30 + len * 0.5));
+            ctx.lineTo(Math.cos(a) * (30 + len), Math.sin(a) * (30 + len));
+            ctx.lineTo(Math.cos(a - 0.15) * (30 + len * 0.5), Math.sin(a - 0.15) * (30 + len * 0.5));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+    } else {
+        // ─── THE LEVIATHAN — Void Eye ───
+        const c = phase === 1 ? { body:'#0d0a1a', glow:'#8844cc', eye:'#aa66ee', pupil:'#ddbbff' }
+              : phase === 2 ? { body:'#0a0514', glow:'#cc44aa', eye:'#ee66cc', pupil:'#ffddff' }
+              :               { body:'#050208', glow:'#ff2244', eye:'#ff4466', pupil:'#ffaaaa' };
+
+        ctx.shadowColor = c.glow;
+        ctx.shadowBlur = 25 + phase * 8;
+
+        // Outer wing/tentacle halo
+        const tentacles = 8 + phase * 2;
+        for (let i = 0; i < tentacles; i++) {
+            const baseA = (i / tentacles) * Math.PI * 2 + frames * 0.008;
+            const wave = Math.sin(frames * 0.04 + i * 1.5) * 12;
+            ctx.strokeStyle = c.glow;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(baseA) * 28, Math.sin(baseA) * 28);
+            ctx.quadraticCurveTo(
+                Math.cos(baseA + 0.3) * (45 + wave), Math.sin(baseA + 0.3) * (45 + wave),
+                Math.cos(baseA + frames * 0.012) * (60 + phase * 10 + wave * 0.5),
+                Math.sin(baseA + frames * 0.012) * (60 + phase * 10 + wave * 0.5)
+            );
+            ctx.stroke();
+        }
+
+        // Body
+        ctx.fillStyle = c.body;
+        ctx.beginPath();
+        ctx.arc(0, 0, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = c.glow;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Iris
+        ctx.fillStyle = c.eye;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14 + phase * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Slit pupil
+        ctx.fillStyle = c.pupil;
+        const slitH = 10 + phase * 3;
+        const slitW = 3 + phase;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, slitW, slitH, frames * 0.01, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Veins radiating
+        ctx.strokeStyle = c.glow;
+        ctx.globalAlpha = 0.4;
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * 14, Math.sin(a) * 14);
+            ctx.lineTo(Math.cos(a) * 26, Math.sin(a) * 26);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
     }
 
     ctx.shadowBlur = 0;
     ctx.restore();
 
-    // Update boss bar
     const pct = (b.hp / b.maxHp) * 100;
     document.getElementById('bossFill').style.width = pct + '%';
 }
@@ -1210,39 +1394,165 @@ function update() {
     // Boss
     if (boss) {
         boss.timer++;
+        const theme = ZONES[currentZone].theme;
+        const hpPct = boss.hp / boss.maxHp;
+        const prevPhase = boss.phase;
+        if (hpPct > 0.66) boss.phase = 1;
+        else if (hpPct > 0.33) boss.phase = 2;
+        else boss.phase = 3;
+
         if (boss.state === 'enter') {
             boss.x -= 0.8;
             if (boss.x < canvas.width - 140) boss.state = 'fight';
         } else {
-            // Phase detection by HP %
-            const hpPct = boss.hp / boss.maxHp;
-            const prevPhase = boss.phase;
-            if (hpPct > 0.66) boss.phase = 1;
-            else if (hpPct > 0.33) boss.phase = 2;
-            else boss.phase = 3;
-
-            // Visual flare on phase transition
+            // Phase transition FX
             if (prevPhase !== boss.phase) {
-                showPopup(boss.x, boss.y - 50, 'PHASE ' + boss.phase, '#ff4466');
-                createParticles(boss.x, boss.y, '#ff4466', 20, 6);
+                const transColor = theme === 'forest' ? '#44cc66' : (theme === 'cave' ? '#cc66ff' : (theme === 'desert' ? '#ff6622' : '#aa44ff'));
+                showPopup(boss.x, boss.y - 55, 'PHASE ' + boss.phase, transColor);
+                createParticles(boss.x, boss.y, transColor, 25, 7);
             }
 
-            // Phase-based movement amplitude
-            const amp = boss.phase === 1 ? 100 : (boss.phase === 2 ? 150 : 180);
-            const freq = boss.phase === 3 ? 0.04 : 0.03;
-            boss.y = canvas.height / 2 + Math.sin(frames * freq) * amp;
-
-            // Phase-based attack patterns
-            const homingRate  = boss.phase === 1 ? 90 : (boss.phase === 2 ? 55 : 35);
-            const spreadRate  = boss.phase === 1 ? 240 : (boss.phase === 2 ? 150 : 90);
-            const spreadCount = boss.phase === 1 ? 1 : (boss.phase === 2 ? 3 : 5);
-
-            if (boss.timer % homingRate === 0) {
-                boss.attacks.push({ x: boss.x, y: boss.y, vx: -4.5, vy: (player.y - boss.y) * 0.025 });
+            // ─── Biome-specific movement ───
+            if (theme === 'forest') {
+                // Warden: slow organic bob with occasional lunge
+                const baseAmp = boss.phase === 1 ? 80 : (boss.phase === 2 ? 120 : 160);
+                boss.y = canvas.height / 2 + Math.sin(frames * 0.025) * baseAmp;
+                if (boss.phase === 3 && boss.timer % 180 === 0) {
+                    // Lunge: quick burst of vertical speed then settle
+                    boss.lungeY = (Math.random() - 0.5) * 200;
+                }
+                if (boss.lungeY !== undefined) {
+                    boss.y += boss.lungeY * 0.05;
+                    boss.lungeY *= 0.92;
+                    if (Math.abs(boss.lungeY) < 1) boss.lungeY = undefined;
+                }
+            } else if (theme === 'cave') {
+                // Prism: teleports between 3 vertical positions
+                const positions = [canvas.height * 0.3, canvas.height * 0.5, canvas.height * 0.7];
+                if (boss.phase === 3) positions.push(canvas.height * 0.2, canvas.height * 0.8);
+                if (!boss.teleportTimer || boss.teleportTimer <= 0) {
+                    boss.teleportTarget = positions[Math.floor(Math.random() * positions.length)];
+                    boss.teleportTimer = boss.phase === 1 ? 150 : (boss.phase === 2 ? 100 : 70);
+                }
+                boss.teleportTimer--;
+                // Smooth glide to target, not instant teleport
+                boss.y += (boss.teleportTarget - boss.y) * 0.04;
+            } else if (theme === 'desert') {
+                // Cinder: figure-8 with increasing speed
+                const speed = boss.phase === 1 ? 0.025 : (boss.phase === 2 ? 0.04 : 0.055);
+                const hAmp = boss.phase === 1 ? 100 : (boss.phase === 2 ? 140 : 180);
+                const vAmp = 60;
+                boss.y = canvas.height / 2 + Math.sin(frames * speed) * hAmp;
+                boss.x = (canvas.width - 120) + Math.sin(frames * speed * 2) * vAmp;
+            } else {
+                // Leviathan: smooth sine with widening amplitude as phases progress
+                const amp = boss.phase === 1 ? 90 : (boss.phase === 2 ? 140 : 200);
+                const freq = 0.03 + (3 - boss.phase) * 0.005;
+                boss.y = canvas.height / 2 + Math.sin(frames * freq) * amp;
+                // Orbiting sub-bodies in phase 3
+                if (boss.phase === 3 && boss.timer % 40 === 0) {
+                    const a = Math.random() * Math.PI * 2;
+                    boss.attacks.push({ x: boss.x + Math.cos(a) * 40, y: boss.y + Math.sin(a) * 40,
+                        vx: -3.5, vy: (player.y - boss.y) * 0.02, orbiting: true });
+                }
             }
-            if (boss.timer % spreadRate === 0) {
-                for (let i = -spreadCount; i <= spreadCount; i++) {
-                    boss.attacks.push({ x: boss.x, y: boss.y, vx: -4.5, vy: i * 1.8 });
+
+            // ─── Biome-specific attack patterns ───
+            if (theme === 'forest') {
+                // Warden: pollen clouds (slow wide) + vine spears (fast narrow) + spore burst
+                const cloudRate = boss.phase === 1 ? 100 : (boss.phase === 2 ? 65 : 40);
+                const vineRate  = boss.phase === 1 ? 180 : (boss.phase === 2 ? 110 : 65);
+                const burstRate = boss.phase === 3 ? 120 : 99999;
+
+                if (boss.timer % cloudRate === 0) {
+                    for (let i = -1; i <= 1; i++) {
+                        boss.attacks.push({ x: boss.x, y: boss.y + i * 18, vx: -3, vy: Math.sin(frames * 0.02) * 0.8, cloud: true });
+                    }
+                }
+                if (boss.timer % vineRate === 0) {
+                    const angle = Math.atan2(player.y - boss.y, player.x - boss.x);
+                    boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(angle) * -5.5, vy: Math.sin(angle) * -5.5 });
+                }
+                if (boss.timer % burstRate === 0) {
+                    for (let i = 0; i < 12; i++) {
+                        const a = (i / 12) * Math.PI * 2;
+                        boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * -3.5, vy: Math.sin(a) * 3.5 });
+                    }
+                }
+
+            } else if (theme === 'cave') {
+                // Prism: crystal shards (straight) + refracted beams (curved) + prism overload
+                const shardRate = boss.phase === 1 ? 90 : (boss.phase === 2 ? 55 : 30);
+                const beamRate  = boss.phase === 1 ? 200 : (boss.phase === 2 ? 130 : 80);
+                const overload  = boss.phase === 3 ? 140 : 99999;
+
+                if (boss.timer % shardRate === 0) {
+                    const spread = boss.phase === 1 ? 1 : (boss.phase === 2 ? 3 : 5);
+                    for (let i = -spread; i <= spread; i++) {
+                        boss.attacks.push({ x: boss.x, y: boss.y, vx: -5, vy: i * 1.5 + Math.sin(frames * 0.05) * 2 });
+                    }
+                }
+                if (boss.timer % beamRate === 0) {
+                    // Refracted beam bends slightly toward player
+                    const dy = (player.y - boss.y) * 0.003;
+                    boss.attacks.push({ x: boss.x, y: boss.y, vx: -5.5, vy: dy, beam: true });
+                }
+                if (boss.timer % overload === 0) {
+                    for (let i = 0; i < 16; i++) {
+                        const a = (i / 16) * Math.PI * 2;
+                        boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * -4, vy: Math.sin(a) * 4 });
+                    }
+                }
+
+            } else if (theme === 'desert') {
+                // Cinder: ember toss (slow tracking) + flame burst (center spray) + meteor (vertical drops)
+                const emberRate  = boss.phase === 1 ? 80 : (boss.phase === 2 ? 50 : 32);
+                const burstRate  = boss.phase === 1 ? 220 : (boss.phase === 2 ? 140 : 90);
+                const meteorRate = boss.phase === 3 ? 100 : 99999;
+
+                if (boss.timer % emberRate === 0) {
+                    const count = boss.phase === 1 ? 1 : (boss.phase === 2 ? 2 : 3);
+                    for (let i = 0; i < count; i++) {
+                        boss.attacks.push({ x: boss.x, y: boss.y + (i - 1) * 20, vx: -4, vy: (player.y - boss.y) * 0.015 + Math.sin(frames * 0.03) * 1.2 });
+                    }
+                }
+                if (boss.timer % burstRate === 0) {
+                    const spread = boss.phase === 1 ? 3 : (boss.phase === 2 ? 5 : 7);
+                    for (let i = -spread; i <= spread; i++) {
+                        boss.attacks.push({ x: boss.x, y: boss.y, vx: -4.5, vy: i * 1.6 });
+                    }
+                }
+                if (boss.timer % meteorRate === 0) {
+                    // Meteors fall from top targeting player x (screen border effect)
+                    for (let i = 0; i < 3; i++) {
+                        const tx = player.x + (Math.random() - 0.5) * 200;
+                        boss.attacks.push({ x: tx, y: -20, vx: 0, vy: 4.5, meteor: true });
+                    }
+                }
+
+            } else {
+                // Leviathan: void orbs (slow homing) + eye beam (straight line) + void collapse (spiral)
+                const orbRate   = boss.phase === 1 ? 85 : (boss.phase === 2 ? 50 : 30);
+                const beamRate  = boss.phase === 1 ? 200 : (boss.phase === 2 ? 120 : 70);
+                const spiralRate = boss.phase === 3 ? 90 : 99999;
+
+                if (boss.timer % orbRate === 0) {
+                    const count = boss.phase === 1 ? 1 : (boss.phase === 2 ? 2 : 3);
+                    for (let i = 0; i < count; i++) {
+                        boss.attacks.push({ x: boss.x, y: boss.y + (i - 1) * 15, vx: -3.5, vy: (player.y - boss.y) * 0.02 });
+                    }
+                }
+                if (boss.timer % beamRate === 0) {
+                    // Line of small projectiles = beam
+                    for (let i = 0; i < 8; i++) {
+                        boss.attacks.push({ x: boss.x - i * 8, y: boss.y, vx: -6, vy: 0, beam: true });
+                    }
+                }
+                if (boss.timer % spiralRate === 0) {
+                    for (let i = 0; i < 18; i++) {
+                        const a = (i / 18) * Math.PI * 2 + frames * 0.05;
+                        boss.attacks.push({ x: boss.x, y: boss.y, vx: Math.cos(a) * -3, vy: Math.sin(a) * 3 });
+                    }
                 }
             }
         }
@@ -1250,20 +1560,25 @@ function update() {
         boss.attacks = boss.attacks.filter(a => {
             a.x += a.vx;
             a.y += a.vy;
+            // Meteor gravity
+            if (a.meteor) a.vy += 0.15;
+            // Cloud sway
+            if (a.cloud) a.vy += Math.sin(frames * 0.04 + a.x * 0.01) * 0.03;
             const dx = player.x - a.x;
             const dy = player.y - a.y;
             if (Math.sqrt(dx*dx + dy*dy) < player.radius + 7) {
                 takeDamage(1);
                 return false;
             }
-            return a.x > -20 && a.y > -10 && a.y < canvas.height + 10;
+            return a.x > -40 && a.y > -40 && a.y < canvas.height + 40;
         });
 
-        // Boss takes passive damage during fight — survive until it dies
+        // Passive damage timer
         if (frames % 60 === 0 && boss.state === 'fight') {
             boss.hp -= 1 + Math.floor(save.upgrades.wings * 0.5);
             if (boss.hp <= 0) {
-                createParticles(boss.x, boss.y, '#ff4466', 60, 10);
+                const deathColor = theme === 'forest' ? '#44cc66' : (theme === 'cave' ? '#cc66ff' : (theme === 'desert' ? '#ff6622' : '#aa44ff'));
+                createParticles(boss.x, boss.y, deathColor, 60, 10);
                 bossDefeated();
             }
         }
