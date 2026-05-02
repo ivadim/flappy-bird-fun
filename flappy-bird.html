@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skyborne Chronicles</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Lato:wght@400;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #0c0e15;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Lato', sans-serif;
+    overflow: hidden;
+    user-select: none;
+}
+
+.game-wrapper {
+    position: relative;
+    width: 480px;
+    height: 720px;
+    box-shadow: 0 0 60px rgba(139, 90, 43, 0.3);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #5a3a1a;
+}
+
+canvas { display: block; }
+
+.scanlines {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 6px);
+    pointer-events: none; z-index: 5;
+}
+
+.vignette {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    box-shadow: inset 0 0 120px rgba(0,0,0,0.6);
+    pointer-events: none; z-index: 6;
+}
+
+.ui-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    pointer-events: none; z-index: 20;
+    transition: opacity 0.4s;
+}
+.ui-overlay.active { pointer-events: all; background: rgba(5,5,12,0.92); }
+
+@keyframes titleGlow {
+    0%,100% { text-shadow: 0 0 20px rgba(255,180,50,0.4), 0 4px 8px rgba(0,0,0,0.8); }
+    50% { text-shadow: 0 0 40px rgba(255,180,50,0.7), 0 4px 8px rgba(0,0,0,0.8); }
+}
+
+.game-title {
+    font-family: 'Cinzel', serif;
+    font-size: 38px; font-weight: 900; color: #e8c87a;
+    text-shadow: 0 0 20px rgba(255,180,50,0.4), 0 4px 8px rgba(0,0,0,0.8);
+    letter-spacing: 4px; margin-bottom: 6px; animation: titleGlow 3s ease-in-out infinite;
+}
+
+.game-subtitle {
+    font-family: 'Cinzel', serif;
+    font-size: 14px; color: #9a7d4a; letter-spacing: 6px;
+    margin-bottom: 30px; text-transform: uppercase;
+}
+
+.rpg-btn {
+    padding: 14px 40px; font-size: 16px; font-weight: 700;
+    border: 2px solid #8b6914; border-radius: 4px;
+    cursor: pointer; background: linear-gradient(180deg, #2a1d0d, #1a1208);
+    color: #d4af37; font-family: 'Cinzel', serif;
+    text-transform: uppercase; letter-spacing: 3px;
+    box-shadow: 0 4px 0 #0d0905, 0 0 20px rgba(139,90,43,0.2);
+    transition: all 0.15s; margin: 6px 0; min-width: 220px;
+    text-align: center;
+}
+.rpg-btn:hover {
+    background: linear-gradient(180deg, #3a2a12, #23180a);
+    box-shadow: 0 4px 0 #0d0905, 0 0 30px rgba(212,175,55,0.3);
+    color: #ffe066; transform: translateY(-1px);
+}
+.rpg-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0d0905; }
+.rpg-btn.locked {
+    opacity: 0.5; pointer-events: none;
+    border-color: #3a2a1a; color: #5a4a2a;
+}
+
+.hud {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 10;
+}
+
+.hp-bar-container {
+    position: absolute; top: 8px; left: 8px;
+    display: flex; align-items: center; gap: 4px;
+    flex-wrap: wrap;
+    max-width: 180px;
+    background: rgba(5,5,10,0.75);
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(90,58,26,0.4);
+}
+
+.hp-orb {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 1.5px solid #5a1a1a;
+    background: #2a0a0a;
+    transition: all 0.3s;
+    box-shadow: inset 0 0 3px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+}
+.hp-orb.filled {
+    background: radial-gradient(circle at 30% 30%, #ff6644, #cc2200);
+    border-color: #ff8866;
+    box-shadow: 0 0 8px rgba(255,60,30,0.5), inset 0 0 4px rgba(255,150,100,0.3);
+}
+
+.xp-bar {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    width: 260px; height: 8px; background: #1a1a2a; border-radius: 4px;
+    border: 1px solid #3a3a4a; overflow: hidden;
+}
+.xp-fill {
+    height: 100%; background: linear-gradient(90deg, #4466cc, #6688ff);
+    border-radius: 4px; transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(100,130,255,0.4);
+}
+.xp-text {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: #8899cc; letter-spacing: 1px;
+    background: rgba(5,5,10,0.7);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.stats-bar {
+    position: absolute; top: 8px; right: 8px;
+    display: flex; gap: 8px; align-items: center;
+    background: rgba(5,5,10,0.75);
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(90,58,26,0.4);
+}
+.stat-pill {
+    background: rgba(10,10,20,0.8); border: 1px solid #3a3020;
+    border-radius: 4px; padding: 4px 10px;
+    font-size: 13px; color: #d4af37; display: flex; align-items: center; gap: 5px;
+}
+
+.profile-list {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 20px; min-width: 280px;
+}
+.profile-item {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(20,15,8,0.8); border: 1px solid #3a2a1a;
+    border-radius: 6px; padding: 10px 14px;
+    cursor: pointer; transition: all 0.2s;
+    text-align: left;
+}
+.profile-item:hover { border-color: #8b6914; background: rgba(40,30,12,0.9); }
+.profile-item.active { border-color: #d4af37; background: rgba(60,45,16,0.9); box-shadow: 0 0 15px rgba(212,175,55,0.2); }
+.profile-avatar { font-size: 28px; }
+.profile-info { flex: 1; }
+.profile-name { font-family: 'Cinzel', serif; font-size: 14px; color: #e8c87a; }
+.profile-meta { font-size: 11px; color: #8a7a5a; margin-top: 2px; }
+.profile-actions { display: flex; gap: 6px; }
+.profile-delete {
+    background: transparent; border: 1px solid #5a2020; color: #aa4444;
+    border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer;
+    font-family: 'Lato', sans-serif; transition: all 0.2s;
+}
+.profile-delete:hover { border-color: #ff4444; color: #ff6666; background: rgba(80,20,20,0.4); }
+.profile-input {
+    background: rgba(20,15,8,0.9); border: 1px solid #5a3a1a; border-radius: 4px;
+    padding: 10px 14px; color: #e8c87a; font-family: 'Cinzel', serif; font-size: 14px;
+    width: 260px; margin-bottom: 10px; outline: none;
+}
+.profile-input:focus { border-color: #d4af37; box-shadow: 0 0 10px rgba(212,175,55,0.2); }
+
+.boss-bar-container {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 200px; display: none; flex-direction: column; align-items: center;
+    background: rgba(5,5,10,0.8);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(120,30,30,0.5);
+}
+.boss-bar-container.active { display: flex; }
+.boss-name {
+    font-family: 'Cinzel', serif; font-size: 13px; color: #ff4466;
+    text-shadow: 0 0 10px rgba(255,50,80,0.5); letter-spacing: 2px;
+    margin-bottom: 4px;
+}
+.boss-bar {
+    width: 100%; height: 10px; background: #1a0a0a;
+    border: 1px solid #5a2020; border-radius: 5px; overflow: hidden;
+}
+.boss-fill {
+    height: 100%; background: linear-gradient(90deg, #aa0000, #ff2244);
+    border-radius: 5px; transition: width 0.3s;
+    box-shadow: 0 0 12px rgba(255,30,60,0.5);
+}
+
+.zone-label {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-family: 'Cinzel', serif; font-size: 32px; color: #e8c87a;
+    text-shadow: 0 0 30px rgba(255,180,50,0.6), 0 2px 4px rgba(0,0,0,0.8);
+    opacity: 0; pointer-events: none; z-index: 15;
+    transition: opacity 0.5s;
+}
+.zone-label.show { opacity: 1; }
+
+.popup-text {
+    position: absolute;
+    font-family: 'Cinzel', serif; font-size: 18px; font-weight: 700;
+    color: #ffe066; text-shadow: 0 0 10px rgba(255,200,50,0.6);
+    pointer-events: none; z-index: 15;
+    animation: popupFloat 1.2s ease-out forwards;
+}
+@keyframes popupFloat {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-60px) scale(1.3); }
+}
+
+.upgrade-panel {
+    background: rgba(10,10,18,0.95); border: 2px solid #5a3a1a;
+    border-radius: 8px; padding: 20px;
+    max-width: 420px; max-height: 80vh; overflow-y: auto;
+}
+.upgrade-title {
+    font-family: 'Cinzel', serif; font-size: 22px; color: #e8c87a;
+    text-align: center; margin-bottom: 15px; letter-spacing: 2px;
+}
+.upgrade-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.upgrade-card {
+    background: rgba(20,15,8,0.9); border: 1px solid #4a3010;
+    border-radius: 6px; padding: 12px; text-align: center;
+    cursor: pointer; transition: all 0.2s;
+}
+.upgrade-card:hover {
+    border-color: #d4af37; background: rgba(30,22,10,0.95);
+    transform: translateY(-2px);
+}
+.upgrade-card.maxed {
+    opacity: 0.4; pointer-events: none;
+}
+.upgrade-icon { font-size: 28px; margin-bottom: 4px; }
+.upgrade-name { font-size: 12px; color: #cca860; font-weight: 700; margin-bottom: 3px; }
+.upgrade-desc { font-size: 10px; color: #8a7a5a; margin-bottom: 6px; }
+.upgrade-cost { font-size: 11px; color: #d4af37; font-weight: 700; }
+.upgrade-level { font-size: 10px; color: #5a8a5a; margin-top: 3px; }
+
+.achievement-toast {
+    position: absolute; top: 80px; left: 50%;
+    background: rgba(10,10,20,0.96); border: 2px solid #d4af37;
+    border-radius: 8px; padding: 12px 24px;
+    display: none; align-items: center; gap: 12px; z-index: 30;
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    box-shadow: 0 0 30px rgba(212,175,55,0.3);
+}
+.achievement-toast.show { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
+.achievement-icon { font-size: 28px; }
+.achievement-info { text-align: left; }
+.achievement-title { font-family: 'Cinzel', serif; font-size: 13px; color: #ffe066; }
+.achievement-sub { font-size: 11px; color: #aa9977; }
+
+.level-badge {
+    position: absolute; bottom: 24px; left: 8px;
+    background: rgba(20,15,8,0.9); border: 1px solid #5a3a1a;
+    border-radius: 6px; padding: 4px 10px;
+    font-family: 'Cinzel', serif; font-size: 12px; color: #d4af37;
+}
+
+.start-screen-content { text-align: center; }
+.play-stats {
+    background: rgba(20,15,8,0.8); border: 1px solid #3a2a1a;
+    border-radius: 6px; padding: 12px 20px; margin-bottom: 20px;
+    min-width: 260px;
+}
+.play-stat-row {
+    display: flex; justify-content: space-between;
+    font-size: 13px; padding: 3px 0; color: #b0a080;
+}
+.play-stat-row span:last-child { color: #d4af37; font-weight: 700; }
+
+.zone-select {
+    margin-bottom: 20px; text-align: center;
+}
+.zone-row {
+    display: flex; align-items: center; gap: 4px; margin: 4px 0;
+    font-size: 12px; color: #8a7a5a; padding: 6px 12px;
+    background: rgba(20,15,8,0.6); border-radius: 4px;
+    border: 1px solid transparent;
+}
+.zone-row.current { border-color: #d4af37; color: #e8c87a; background: rgba(80,60,20,0.3); }
+.zone-row.completed { color: #5a8a5a; }
+.zone-dot { width: 8px; height: 8px; border-radius: 50%; background: #3a3020; }
+.zone-dot.completed { background: #5a8a5a; box-shadow: 0 0 6px rgba(90,180,90,0.4); }
+.zone-dot.current { background: #d4af37; box-shadow: 0 0 8px rgba(212,175,55,0.5); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.3); } }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="game-wrapper">
+    <canvas id="game" width="480" height="720"></canvas>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <div class="hud hidden" id="hud">
+        <div class="hp-bar-container" id="hpBar"></div>
+        <div class="stats-bar">
+            <div class="stat-pill">💰 <span id="coinDisplay">0</span></div>
+            <div class="stat-pill">⚔️ <span id="scoreDisplay">0</span></div>
+        </div>
+        <div class="boss-bar-container" id="bossBar">
+            <div class="boss-name" id="bossName">BOSS</div>
+            <div class="boss-bar"><div class="boss-fill" id="bossFill" style="width:100%"></div></div>
+        </div>
+        <div class="xp-bar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+        <div class="xp-text" id="xpText">LEVEL 1</div>
+        <div class="level-badge" id="levelBadge">HP: 3/3</div>
+    </div>
+
+    <div class="zone-label" id="zoneLabel">Zone 1</div>
+
+    <div class="achievement-toast" id="achievementToast">
+        <div class="achievement-icon" id="achIcon">🏆</div>
+        <div class="achievement-info">
+            <div class="achievement-title" id="achTitle">Achievement!</div>
+            <div class="achievement-sub" id="achDesc">Description</div>
+        </div>
+    </div>
+
+    <!-- Profile Picker -->
+    <div class="ui-overlay active" id="profileScreen">
+        <div class="start-screen-content">
+            <div class="game-title">Skyborne</div>
+            <div class="game-subtitle">Choose Your Hero</div>
+            <div class="profile-list" id="profileList"></div>
+            <div id="newProfileWrap">
+                <input type="text" class="profile-input" id="newProfileName" placeholder="New hero name..." maxlength="16">
+                <button class="rpg-btn" onclick="createProfile()">➕ Create Hero</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div class="ui-overlay hidden active" id="startScreen">
+        <div class="start-screen-content">
+            <div class="game-title">Skyborne</div>
+            <div class="game-subtitle" id="profileDisplay">Chronicles</div>
+            <div class="play-stats" id="playStats"></div>
+            <div class="zone-select" id="zoneSelect"></div>
+            <button class="rpg-btn" onclick="showUpgrades()">⚒️ Forge</button>
+            <button class="rpg-btn" onclick="startGame()">▶ Begin Journey</button>
+            <button class="rpg-btn" onclick="showAchievements()">🏅 Medals</button>
+            <button class="rpg-btn" style="border-color:#3a2a1a; color:#8a7a5a; font-size:14px; min-width:180px; padding:10px 24px; margin-top:10px;" onclick="showProfilePicker()">👤 Switch Hero</button>
+        </div>
+    </div>
+
+    <!-- Upgrade Screen -->
+    <div class="ui-overlay hidden active" id="upgradeScreen">
+        <div class="upgrade-panel">
+            <div class="upgrade-title">⚒️ The Forge</div>
+            <div style="text-align:center; font-size:13px; color:#d4af37; margin-bottom:15px;">
+                💰 <span id="upgradeCoins">0</span> Gold
+            </div>
+            <div class="upgrade-grid" id="upgradeGrid"></div>
+            <button class="rpg-btn" style="margin-top:15px;" onclick="showStartScreen()">◀ Return</button>
+        </div>
+    </div>
+
+    <!-- Achievements Screen -->
+    <div class="ui-overlay hidden active" id="achScreen">
+        <div class="upgrade-panel" style="max-width: 380px;">
+            <div class="upgrade-title">🏅 Medals</div>
+            <div id="achList"></div>
+            <button class="rpg-btn" style="margin-top:15px;" onclick="showStartScreen()">◀ Return</button>
+        </div>
+    </div>
+
+    <!-- Game Over -->
+    <div class="ui-overlay hidden active" id="gameOverScreen">
+        <div class="game-title" style="font-size:28px; color:#cc4444;">Fallen</div>
+        <div class="game-subtitle" id="deathSubtitle">Your journey ends here</div>
+        <div class="play-stats" id="deathStats" style="margin: 15px 0;"></div>
+        <button class="rpg-btn" onclick="startGame()">↻ Try Again</button>
+        <button class="rpg-btn" onclick="showStartScreen()">🏠 Town</button>
+    </div>
+
+    <!-- Boss Defeated -->
+    <div class="ui-overlay hidden active" id="bossVictoryScreen">
+        <div class="game-title" style="font-size:28px; color:#44cc88;">Victory!</div>
+        <div class="game-subtitle" id="bossVicSub">Boss Defeated</div>
+        <div class="play-stats" id="bossStats" style="margin: 15px 0;"></div>
+        <button class="rpg-btn" onclick="nextZone()">▶ Next Zone</button>
+        <button class="rpg-btn" onclick="showStartScreen()">🏠 Town</button>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+// ─── Game State ───
+let gameRunning = false;
+let paused = false;
+let frames = 0;
+let score = 0;
+let coins = 0;
+let currentZone = 0;
+
+// ─── Save Data ───
+const defaultSave = {
+    coins: 0,
+    highScore: 0,
+    totalRuns: 0,
+    totalCoins: 0,
+    totalPipes: 0,
+    totalUpgradesBought: 0,
+    zonesUnlocked: 1,
+    upgrades: {
+        maxHp: 0,
+        shield: 0,
+        magnet: 0,
+        luck: 0,
+        wings: 0,
+        fortune: 0,
+    },
+    achievements: {},
+};
+
+const SAVE_KEY = 'skyborneProfiles';
+let currentProfileId = null;
+
+function migrateOldSave() {
+    const old = localStorage.getItem('skyborneSave');
+    if (!old) return null;
+    try {
+        const data = JSON.parse(old);
+        if (data && typeof data.coins === 'number') {
+            localStorage.removeItem('skyborneSave');
+            return data;
+        }
+    } catch { }
+    return null;
+}
+
+function loadProfiles() {
+    let ps;
+    try {
+        ps = JSON.parse(localStorage.getItem(SAVE_KEY));
+    } catch { }
+    if (!ps || !ps.profiles || !Array.isArray(ps.profiles)) {
+        const migrated = migrateOldSave();
+        if (migrated) {
+            ps = { profiles: [{ id: 0, name: 'Hero', data: migrated, lastZone: 0 }], lastProfileId: 0 };
+        } else {
+            ps = { profiles: [{ id: 0, name: 'Hero', data: { ...defaultSave }, lastZone: 0 }], lastProfileId: 0 };
+        }
+        localStorage.setItem(SAVE_KEY, JSON.stringify(ps));
+    }
+    return ps;
+}
+
+function loadProfile(id) {
+    const ps = loadProfiles();
+    const p = ps.profiles.find(x => x.id === id);
+    if (!p) return null;
+    return { ...defaultSave, ...p.data };
+}
+
+function saveGame() {
+    if (currentProfileId === null) return;
+    const ps = loadProfiles();
+    const idx = ps.profiles.findIndex(x => x.id === currentProfileId);
+    if (idx === -1) return;
+    ps.profiles[idx].data = save;
+    ps.profiles[idx].lastZone = currentZone;
+    ps.lastProfileId = currentProfileId;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(ps));
+}
+
+function createNewProfile(name) {
+    const ps = loadProfiles();
+    const nextId = ps.profiles.length > 0 ? Math.max(...ps.profiles.map(p => p.id)) + 1 : 0;
+    ps.profiles.push({ id: nextId, name: name.trim().slice(0, 16) || 'Hero', data: { ...defaultSave }, lastZone: 0 });
+    localStorage.setItem(SAVE_KEY, JSON.stringify(ps));
+    return nextId;
+}
+
+function deleteProfile(id) {
+    const ps = loadProfiles();
+    ps.profiles = ps.profiles.filter(p => p.id !== id);
+    if (ps.profiles.length === 0) {
+        ps.profiles.push({ id: 0, name: 'Hero', data: { ...defaultSave }, lastZone: 0 });
+        ps.lastProfileId = 0;
+    } else if (ps.lastProfileId === id) {
+        ps.lastProfileId = ps.profiles[0].id;
+    }
+    localStorage.setItem(SAVE_KEY, JSON.stringify(ps));
+}
+
+function initProfiles() {
+    const ps = loadProfiles();
+    const lastId = ps.lastProfileId ?? ps.profiles[0].id;
+    const p = ps.profiles.find(x => x.id === lastId) || ps.profiles[0];
+    currentProfileId = p.id;
+    currentZone = p.lastZone ?? 0;
+    return { ...defaultSave, ...p.data };
+}
+
+let save = initProfiles();
+
+// ─── Zones ───
+const ZONES = [
+    { name: 'Whispering Fields', theme: 'forest', pipes: 8, boss: false, diff: 1, bg: ['#1a2a1a','#0d1a0d'] },
+    { name: 'Crystal Caverns', theme: 'cave', pipes: 10, boss: true, diff: 1.3, bg: ['#1a1528','#0d0a18'] },
+    { name: 'Scorched Wastes', theme: 'desert', pipes: 12, boss: true, diff: 1.6, bg: ['#2a1a10','#1a0d08'] },
+    { name: 'Abyssal Spire', theme: 'void', pipes: 15, boss: true, diff: 2.0, bg: ['#0d0a1a','#050510'] },
+];
+
+// ─── Achievements ───
+const ACHIEVEMENTS = {
+    first_flight: { name: 'First Steps', desc: 'Complete your first run', icon: '🥾', secret: false },
+    novice_flier: { name: 'Novice Flier', desc: 'Reach 5 score', icon: '🪶', secret: false },
+    coin_collector: { name: 'Treasure Hunter', desc: 'Collect 50 coins in one run', icon: '💰', secret: false },
+    hundred_coins: { name: 'Dragon\'s Hoard', desc: 'Collect 100 coins in one run', icon: '🐉', secret: false },
+    hoarder: { name: 'Hoarder', desc: 'Collect 200 coins in one run', icon: '👜', secret: false },
+    survivor: { name: 'Survivor', desc: 'Reach 20 score', icon: '🛡️', secret: false },
+    veteran: { name: 'Veteran', desc: 'Reach 40 score', icon: '🏅', secret: false },
+    boss_slayer: { name: 'Boss Slayer', desc: 'Defeat your first boss', icon: '⚔️', secret: false },
+    cavern_clear: { name: 'Deep Delver', desc: 'Clear Crystal Caverns', icon: '💎', secret: false },
+    waste_clear: { name: 'Waste Walker', desc: 'Clear Scorched Wastes', icon: '🔥', secret: false },
+    spire_clear: { name: 'Void Reaver', desc: 'Clear Abyssal Spire', icon: '👁️', secret: false },
+    zone_master: { name: 'Zone Master', desc: 'Clear all 4 zones', icon: '👑', secret: false },
+    rich: { name: 'Affluent', desc: 'Accumulate 500 coins total', icon: '💍', secret: false },
+    wealthy: { name: 'Wealthy', desc: 'Accumulate 2000 coins total', icon: '💎', secret: false },
+    billionaire: { name: 'Billionaire', desc: 'Accumulate 5000 coins total', icon: '🏰', secret: false },
+    no_damage: { name: 'Flawless', desc: 'Clear a zone without taking damage', icon: '✨', secret: false },
+    max_level: { name: 'Ascended', desc: 'Reach level 5 in one run', icon: '☀️', secret: false },
+    upgrade_1: { name: 'First Investment', desc: 'Buy your first upgrade', icon: '🔨', secret: false },
+    upgrade_maxed: { name: 'Peak Power', desc: 'Max out an upgrade', icon: '⚡', secret: false },
+    maxed_out: { name: 'Optimization', desc: 'Max out all upgrades', icon: '📜', secret: false },
+    pipe_dodger: { name: 'Pipe Dodger', desc: 'Pass 100 pipes total', icon: '🏃', secret: false },
+    pipe_master: { name: 'Pipe Master', desc: 'Pass 500 pipes total', icon: '🌪️', secret: false },
+    shield_breaker: { name: 'Shield Breaker', desc: 'Block damage 3 times in one run', icon: '🧱', secret: false },
+    powerup_collector: { name: 'Arcanist', desc: 'Collect 3 powerups in one run', icon: '🧪', secret: false },
+    comeback_kid: { name: 'Comeback Kid', desc: 'Defeat a boss with only 1 HP', icon: '💀', secret: true },
+    beginner_luck: { name: 'Beginner\'s Luck', desc: 'Clear Zone 1 without upgrades', icon: '🍀', secret: true },
+};
+
+function unlockAchievement(key) {
+    if (save.achievements[key]) return;
+    save.achievements[key] = true;
+    saveGame();
+    showAchievementToast(key);
+}
+
+function showAchievementToast(key) {
+    const ach = ACHIEVEMENTS[key];
+    document.getElementById('achIcon').textContent = ach.icon;
+    document.getElementById('achTitle').textContent = 'Achievement Unlocked!';
+    document.getElementById('achDesc').textContent = ach.name;
+    const toast = document.getElementById('achievementToast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ─── Player ───
+const player = {
+    x: 80, y: 360, radius: 16,
+    velocity: 0, gravity: 0.5, jump: -8,
+    rotation: 0, wingAngle: 0,
+    hp: 3, maxHp: 3, xp: 0, level: 1,
+    shielded: false, shieldTimer: 0,
+    magnetTimer: 0, slowTimer: 0,
+    invincible: 0,
+    flawless: true,
+};
+
+// ─── Upgrades ───
+const UPGRADES = {
+    maxHp: { name: 'Heart Vessel', desc: '+1 Max HP', icon: '❤️', baseCost: 50, max: 5, perLevel: 40 },
+    shield: { name: 'Aegis Plate', desc: 'Chance for start shield', icon: '🛡️', baseCost: 80, max: 3, perLevel: 60 },
+    magnet: { name: 'Magnet Charm', desc: 'Longer coin magnet', icon: '🧲', baseCost: 60, max: 5, perLevel: 50 },
+    luck: { name: 'Lucky Star', desc: 'More coins spawn', icon: '⭐', baseCost: 100, max: 4, perLevel: 80 },
+    wings: { name: 'Swift Wings', desc: 'Slower pipe speed', icon: '🪶', baseCost: 70, max: 4, perLevel: 60 },
+    fortune: { name: 'Midas Touch', desc: 'Coins worth more', icon: '👑', baseCost: 120, max: 3, perLevel: 100 },
+};
+
+function getUpgradeCost(key) {
+    const u = UPGRADES[key];
+    const lvl = save.upgrades[key];
+    return u.baseCost + lvl * u.perLevel;
+}
+
+function buyUpgrade(key) {
+    const cost = getUpgradeCost(key);
+    if (save.upgrades[key] >= UPGRADES[key].max || save.coins < cost) return;
+    save.coins -= cost;
+    save.upgrades[key]++;
+    save.totalUpgradesBought++;
+    saveGame();
+    unlockAchievement('upgrade_1');
+    if (save.upgrades[key] >= UPGRADES[key].max) unlockAchievement('upgrade_maxed');
+    const allMaxed = Object.keys(UPGRADES).every(k => save.upgrades[k] >= UPGRADES[k].max);
+    if (allMaxed) unlockAchievement('maxed_out');
+    renderUpgrades();
+}
+
+// ─── World ───
+let obstacles = [];
+let coinsList = [];
+let particles = [];
+let powerups = [];
+let boss = null;
+let clouds = [];
+let stars = [];
+
+const groundY = canvas.height - 70;
+
+// ─── Enemy Types ───
+function spawnObstacle() {
+    const zone = ZONES[currentZone];
+    const gapSize = 160 - zone.diff * 10 + save.upgrades.wings * 5;
+    const minObs = 80;
+    const maxObs = groundY - gapSize - minObs - 20;
+    const top = Math.random() * (maxObs - minObs) + minObs;
+
+    const types = ['pipe'];
+    if (zone.diff >= 1.3) types.push('moving');
+    if (zone.diff >= 1.6) types.push('spike');
+    const type = types[Math.floor(Math.random() * types.length)];
+
+    const obs = {
+        x: canvas.width,
+        top: top,
+        bottom: top + gapSize,
+        passed: false,
+        type: type,
+        moveOffset: 0,
+        moveDir: Math.random() > 0.5 ? 1 : -1,
+        moveSpeed: 1 + Math.random(),
+    };
+    obstacles.push(obs);
+    return obs;
+}
+
+function spawnInGap(obs, type) {
+    const gapCenter = obs.top + (obs.bottom - obs.top) / 2;
+    const spread = (obs.bottom - obs.top) * 0.35;
+    const y = gapCenter + (Math.random() - 0.5) * spread;
+    if (type === 'coin') {
+        const luck = save.upgrades.luck;
+        if (Math.random() > 0.35 + luck * 0.12) return;
+        coinsList.push({
+            x: obs.x + 28 + Math.random() * 20,
+            y: Math.max(obs.top + 25, Math.min(obs.bottom - 25, y)),
+            collected: false,
+            bobOffset: Math.random() * Math.PI * 2,
+        });
+    } else if (type === 'powerup') {
+        if (Math.random() > 0.88) {
+            const types = ['shield','heal','slow'];
+            powerups.push({
+                x: obs.x + 28,
+                y: Math.max(obs.top + 35, Math.min(obs.bottom - 35, y)),
+                type: types[Math.floor(Math.random() * types.length)],
+                bobOffset: Math.random() * Math.PI * 2,
+            });
+        }
+    }
+}
+
+function spawnBoss() {
+    boss = {
+        x: canvas.width + 60,
+        y: canvas.height / 2,
+        hp: 20 + currentZone * 15,
+        maxHp: 20 + currentZone * 15,
+        phase: 0,
+        timer: 0,
+        attacks: [],
+        state: 'enter',
+    };
+    document.getElementById('bossBar').classList.add('active');
+}
+
+// ─── Drawing ───
+function drawBackground() {
+    const zone = ZONES[currentZone];
+    const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    g.addColorStop(0, zone.bg[0]);
+    g.addColorStop(1, zone.bg[1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Distant elements
+    if (zone.theme === 'forest') {
+        // Trees
+        const treeOff = (frames * 0.5) % 120;
+        ctx.fillStyle = '#0d1a0d';
+        for (let x = -120; x < canvas.width + 120; x += 120) {
+            const tx = x - treeOff;
+            ctx.beginPath();
+            ctx.moveTo(tx + 60, groundY);
+            ctx.lineTo(tx + 40, groundY - 80);
+            ctx.lineTo(tx + 80, groundY - 80);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(tx + 60, groundY - 50);
+            ctx.lineTo(tx + 35, groundY - 110);
+            ctx.lineTo(tx + 85, groundY - 110);
+            ctx.fill();
+        }
+    } else if (zone.theme === 'cave') {
+        // Crystals
+        const cryOff = (frames * 0.4) % 100;
+        for (let x = -100; x < canvas.width + 100; x += 100) {
+            const cx = x - cryOff;
+            ctx.fillStyle = 'rgba(100,80,180,0.15)';
+            ctx.beginPath();
+            ctx.moveTo(cx + 50, groundY);
+            ctx.lineTo(cx + 35, groundY - 90);
+            ctx.lineTo(cx + 65, groundY - 90);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(100,80,180,0.3)';
+            ctx.beginPath();
+            ctx.moveTo(cx + 50, groundY - 20);
+            ctx.lineTo(cx + 42, groundY - 50);
+            ctx.lineTo(cx + 58, groundY - 50);
+            ctx.fill();
+        }
+    } else if (zone.theme === 'desert') {
+        // Dunes
+        const dOff = (frames * 0.6) % 200;
+        ctx.fillStyle = '#1a0d05';
+        for (let x = -200; x < canvas.width + 200; x += 200) {
+            const dx = x - dOff;
+            ctx.beginPath();
+            ctx.moveTo(dx, groundY);
+            ctx.quadraticCurveTo(dx + 100, groundY - 60, dx + 200, groundY);
+            ctx.fill();
+        }
+    } else {
+        // Void - stars
+        stars.forEach(s => {
+            s.x -= s.speed;
+            if (s.x < 0) s.x = canvas.width;
+            s.brightness += (Math.random() - 0.5) * 0.1;
+            s.brightness = Math.max(0.2, Math.min(1, s.brightness));
+            ctx.fillStyle = `rgba(200,180,255,${s.brightness})`;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    clouds.forEach(c => {
+        c.x -= c.speed;
+        if (c.x + c.w < -50) { c.x = canvas.width + 50; c.y = Math.random() * 200 + 30; }
+        ctx.fillStyle = `rgba(255,255,255,${c.alpha})`;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.w * 0.3, 0, Math.PI * 2);
+        ctx.arc(c.x + c.w * 0.25, c.y - c.w * 0.1, c.w * 0.35, 0, Math.PI * 2);
+        ctx.arc(c.x + c.w * 0.5, c.y, c.w * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+function drawGround() {
+    const zone = ZONES[currentZone];
+    ctx.fillStyle = zone.theme === 'void' ? '#080510' : '#0d0a08';
+    ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+    ctx.strokeStyle = zone.theme === 'cave' ? '#2a2040' : (zone.theme === 'desert' ? '#3a2010' : '#1a2a15');
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(canvas.width, groundY);
+    ctx.stroke();
+}
+
+function drawPlayer() {
+    // Shield aura
+    if (player.shielded) {
+        ctx.strokeStyle = `rgba(80,160,255,${0.5 + Math.sin(frames * 0.1) * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius + 6, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    player.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, player.velocity * 0.08));
+    ctx.rotate(player.rotation);
+
+    // Body
+    ctx.fillStyle = '#c8a848';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 15, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#8a6a20';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(6, -4, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(8, -4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Beak
+    ctx.fillStyle = '#e88020';
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.lineTo(20, 2);
+    ctx.lineTo(10, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wing
+    player.wingAngle += 0.25;
+    const wingOff = Math.sin(player.wingAngle) * 4;
+    ctx.fillStyle = '#b08830';
+    ctx.beginPath();
+    ctx.ellipse(-4, 3 + wingOff * 0.5, 8, 5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#7a5a18';
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function drawObstacle(obs) {
+    const zone = ZONES[currentZone];
+    let topY = obs.top;
+    let botY = obs.bottom;
+
+    if (obs.type === 'moving') {
+        obs.moveOffset += obs.moveDir * obs.moveSpeed;
+        if (Math.abs(obs.moveOffset) > 40) obs.moveDir *= -1;
+        topY += obs.moveOffset;
+        botY += obs.moveOffset;
+    }
+
+    const colors = zone.theme === 'forest' ? ['#2a4a2a', '#1a3a1a'] :
+                   zone.theme === 'cave' ? ['#3a2a5a', '#2a1a40'] :
+                   zone.theme === 'desert' ? ['#5a3a1a', '#3a2008'] :
+                   ['#1a0a2a', '#0d0518'];
+
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(obs.x, 0, 55, topY);
+    ctx.fillStyle = colors[1];
+    ctx.fillRect(obs.x + 5, 5, 45, topY - 10);
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(obs.x, botY, 55, canvas.height - botY);
+    ctx.fillStyle = colors[1];
+    ctx.fillRect(obs.x + 5, botY + 5, 45, canvas.height - botY - 10);
+
+    if (obs.type === 'spike') {
+        ctx.fillStyle = '#cc4444';
+        for (let sy = 0; sy < topY; sy += 25) {
+            ctx.beginPath();
+            ctx.moveTo(obs.x + 55, sy);
+            ctx.lineTo(obs.x + 70, sy + 12);
+            ctx.lineTo(obs.x + 55, sy + 25);
+            ctx.fill();
+        }
+        for (let sy = botY; sy < canvas.height; sy += 25) {
+            ctx.beginPath();
+            ctx.moveTo(obs.x + 55, sy + 25);
+            ctx.lineTo(obs.x + 70, sy + 12);
+            ctx.lineTo(obs.x + 55, sy);
+            ctx.fill();
+        }
+    }
+
+    // Cap
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(obs.x - 3, topY - 20, 61, 20);
+    ctx.fillRect(obs.x - 3, botY, 61, 20);
+}
+
+function drawCoin(c) {
+    const bob = Math.sin(frames * 0.08 + c.bobOffset) * 3;
+    ctx.fillStyle = '#d4af37';
+    ctx.shadowColor = '#d4af37';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y + bob, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffe066';
+    ctx.beginPath();
+    ctx.arc(c.x - 2, c.y + bob - 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
+function drawPowerup(p) {
+    const bob = Math.sin(frames * 0.06 + p.bobOffset) * 4;
+    const colors = { shield: '#4488ff', heal: '#44cc66', slow: '#cc88ff' };
+    const icons = { shield: '🛡️', heal: '❤️', slow: '⏳' };
+    ctx.font = '20px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(icons[p.type], p.x, p.y + bob + 7);
+    ctx.strokeStyle = colors[p.type];
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + bob, 16, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+function drawBoss() {
+    if (!boss) return;
+    const b = boss;
+    ctx.save();
+    ctx.translate(b.x, b.y);
+
+    // Boss body
+    ctx.fillStyle = '#2a0a1a';
+    ctx.strokeStyle = '#ff4466';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#ff2244';
+    ctx.shadowBlur = 15;
+
+    // Core
+    const pulse = 1 + Math.sin(frames * 0.05) * 0.1;
+    ctx.beginPath();
+    ctx.arc(0, 0, 35 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Eye
+    ctx.fillStyle = '#ff2244';
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffaa88';
+    ctx.beginPath();
+    ctx.arc(-3, -3, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Spikes
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + frames * 0.02;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * 35, Math.sin(angle) * 35);
+        ctx.lineTo(Math.cos(angle) * 55, Math.sin(angle) * 55);
+        ctx.stroke();
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Update boss bar
+    const pct = (b.hp / b.maxHp) * 100;
+    document.getElementById('bossFill').style.width = pct + '%';
+}
+
+function drawParticles() {
+    particles = particles.filter(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.15;
+        p.life -= p.decay;
+        if (p.life > 0) {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+            ctx.fill();
+            return true;
+        }
+        return false;
+    });
+    ctx.globalAlpha = 1;
+}
+
+function createParticles(x, y, color, count, spread = 4) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x, y,
+            vx: (Math.random() - 0.5) * spread,
+            vy: (Math.random() - 0.5) * spread,
+            life: 1,
+            decay: Math.random() * 0.03 + 0.015,
+            color,
+            size: Math.random() * 3 + 1.5,
+        });
+    }
+}
+
+function showPopup(x, y, text, color = '#ffe066') {
+    const el = document.createElement('div');
+    el.className = 'popup-text';
+    el.textContent = text;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.color = color;
+    document.querySelector('.game-wrapper').appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+}
+
+// ─── Game Logic ───
+function takeDamage(amount = 1) {
+    if (player.invincible > 0) return;
+    if (player.shielded) {
+        player.shielded = false;
+        player.invincible = 60;
+        player.shieldBlocks++;
+        if (player.shieldBlocks >= 3) unlockAchievement('shield_breaker');
+        createParticles(player.x, player.y, '#4488ff', 15);
+        return;
+    }
+    player.hp -= amount;
+    player.invincible = 60;
+    player.flawless = false;
+    createParticles(player.x, player.y, '#ff4444', 20, 6);
+    updateHUD();
+    if (player.hp <= 0) gameOver();
+}
+
+function gainXp(amount) {
+    player.xp += amount;
+    const needed = player.level * 30;
+    if (player.xp >= needed) {
+        player.xp -= needed;
+        player.level++;
+        player.hp = Math.min(player.hp + 1, player.maxHp);
+        showPopup(canvas.width / 2, canvas.height / 2, 'LEVEL UP!', '#44ff88');
+        createParticles(canvas.width / 2, canvas.height / 2, '#44ff88', 30, 8);
+    }
+    updateHUD();
+}
+
+function checkCollision(obs) {
+    let topY = obs.top;
+    let botY = obs.bottom;
+    if (obs.type === 'moving') {
+        topY += obs.moveOffset;
+        botY += obs.moveOffset;
+    }
+    const pLeft = player.x - player.radius + 4;
+    const pRight = player.x + player.radius - 4;
+    const pTop = player.y - player.radius + 4;
+    const pBot = player.y + player.radius - 4;
+
+    if (pRight > obs.x && pLeft < obs.x + 55) {
+        if (pTop < topY || pBot > botY) return true;
+    }
+    if (obs.type === 'spike') {
+        if (pRight > obs.x + 55 && pLeft < obs.x + 70) {
+            if (pTop < topY + 25 || pBot > botY - 25) return true;
+        }
+    }
+    return false;
+}
+
+function update() {
+    if (!gameRunning) return;
+    frames++;
+
+    if (player.invincible > 0) player.invincible--;
+    if (player.shieldTimer > 0) { player.shieldTimer--; if (player.shieldTimer <= 0) player.shielded = false; }
+    if (player.magnetTimer > 0) player.magnetTimer--;
+    if (player.slowTimer > 0) player.slowTimer--;
+
+    const speedMult = player.slowTimer > 0 ? 0.5 : 1;
+    const zone = ZONES[currentZone];
+    const baseSpeed = 2.2 + zone.diff * 0.5 - save.upgrades.wings * 0.15;
+    const moveSpeed = baseSpeed * speedMult;
+
+    player.velocity += player.gravity;
+    player.y += player.velocity;
+
+    if (player.y + player.radius >= groundY) {
+        player.y = groundY - player.radius;
+        takeDamage(1);
+    }
+    if (player.y - player.radius < 0) {
+        player.y = player.radius;
+        player.velocity = 0;
+    }
+
+    // Spawn
+    if (!boss) {
+        if (frames % Math.floor(100 / zone.diff) === 0 && obstacles.length < zone.pipes) {
+            const obs = spawnObstacle();
+            if (obs) {
+                spawnInGap(obs, 'coin');
+                spawnInGap(obs, 'powerup');
+            }
+        }
+        // Boss trigger
+        const bossAt = zone.boss ? (zone.pipes - 2) * Math.floor(100 / zone.diff) + 150 : 99999;
+        if (frames > bossAt && boss === null && zone.boss) {
+            spawnBoss();
+        }
+    }
+
+    // Obstacles
+    obstacles = obstacles.filter(obs => {
+        obs.x -= moveSpeed;
+        if (checkCollision(obs)) {
+            takeDamage(1);
+        }
+        if (!obs.passed && obs.x + 55 < player.x) {
+            obs.passed = true;
+            score++;
+            player.runPipes++;
+            save.totalPipes++;
+            gainXp(5);
+            document.getElementById('scoreDisplay').textContent = score;
+            if (score >= 5) unlockAchievement('novice_flier');
+            if (score >= 20) unlockAchievement('survivor');
+            if (score >= 40) unlockAchievement('veteran');
+            if (save.totalPipes >= 100) unlockAchievement('pipe_dodger');
+            if (save.totalPipes >= 500) unlockAchievement('pipe_master');
+        }
+        return obs.x > -80;
+    });
+
+    // Coins
+    const magnetRange = 80 + save.upgrades.magnet * 30;
+    coinsList = coinsList.filter(c => {
+        c.x -= moveSpeed;
+        // Magnet
+        if (player.magnetTimer > 0) {
+            const dx = player.x - c.x;
+            const dy = player.y - c.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < magnetRange && dist > 20) {
+                c.x += dx * 0.08;
+                c.y += dy * 0.08;
+            }
+        }
+        const dx = player.x - c.x;
+        const dy = player.y - c.y;
+        if (Math.sqrt(dx*dx + dy*dy) < player.radius + 12) {
+            const val = (1 + save.upgrades.fortune) * 1;
+            coins += val;
+            document.getElementById('coinDisplay').textContent = coins;
+            createParticles(c.x, c.y, '#d4af37', 8);
+            return false;
+        }
+        return c.x > -20;
+    });
+
+    // Powerups
+    powerups = powerups.filter(p => {
+        p.x -= moveSpeed;
+        const dx = player.x - p.x;
+        const dy = player.y - p.y;
+        if (Math.sqrt(dx*dx + dy*dy) < player.radius + 16) {
+            player.powerupsCollected++;
+            if (player.powerupsCollected >= 3) unlockAchievement('powerup_collector');
+            if (p.type === 'shield') {
+                player.shielded = true;
+                player.shieldTimer = 300;
+                showPopup(player.x, player.y - 30, 'Shield!', '#4488ff');
+            } else if (p.type === 'heal') {
+                if (player.hp < player.maxHp) {
+                    player.hp++;
+                    showPopup(player.x, player.y - 30, '+HP', '#44cc66');
+                } else {
+                    coins += 3;
+                }
+                updateHUD();
+            } else if (p.type === 'slow') {
+                player.slowTimer = 300;
+                showPopup(player.x, player.y - 30, 'Slow Mo!', '#cc88ff');
+            }
+            return false;
+        }
+        return p.x > -20;
+    });
+
+    // Boss
+    if (boss) {
+        boss.timer++;
+        if (boss.state === 'enter') {
+            boss.x -= 1;
+            if (boss.x < canvas.width - 120) boss.state = 'fight';
+        } else {
+            boss.y = canvas.height / 2 + Math.sin(frames * 0.03) * 150;
+            // Boss shoots
+            if (boss.timer % 80 === 0) {
+                boss.attacks.push({ x: boss.x, y: boss.y, vx: -4, vy: (player.y - boss.y) * 0.02 });
+            }
+            if (boss.timer % 200 === 0) {
+                // Spread shot
+                for (let i = -2; i <= 2; i++) {
+                    boss.attacks.push({ x: boss.x, y: boss.y, vx: -4, vy: i * 1.5 });
+                }
+            }
+        }
+
+        boss.attacks = boss.attacks.filter(a => {
+            a.x += a.vx;
+            a.y += a.vy;
+            const dx = player.x - a.x;
+            const dy = player.y - a.y;
+            if (Math.sqrt(dx*dx + dy*dy) < player.radius + 6) {
+                takeDamage(1);
+                return false;
+            }
+            // Player can damage boss by passing attacks? No, boss needs special mechanics
+            // Actually let players shoot by passing through gaps near boss?
+            // Simpler: boss loses hp over time while fighting, or player shoots when collecting coins near boss
+            return a.x > -20 && a.y > 0 && a.y < canvas.height;
+        });
+
+        // Boss takes damage when player is near and there are no obstacles (simulated by score in boss phase)
+        if (frames % 60 === 0 && boss.state === 'fight') {
+            boss.hp -= 1 + Math.floor(save.upgrades.wings * 0.5);
+            if (boss.hp <= 0) {
+                createParticles(boss.x, boss.y, '#ff4466', 50, 10);
+                bossDefeated();
+            }
+        }
+    }
+}
+
+function draw() {
+    drawBackground();
+    obstacles.forEach(o => drawObstacle(o));
+    coinsList.forEach(c => drawCoin(c));
+    powerups.forEach(p => drawPowerup(p));
+    if (boss) {
+        drawBoss();
+        boss.attacks.forEach(a => {
+            ctx.fillStyle = '#ff4466';
+            ctx.shadowColor = '#ff2244';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(a.x, a.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        });
+    }
+    drawGround();
+    // Invincibility flicker
+    if (player.invincible <= 0 || Math.floor(frames / 3) % 2 === 0) {
+        drawPlayer();
+    }
+    drawParticles();
+
+    // Slow mo tint
+    if (player.slowTimer > 0) {
+        ctx.fillStyle = 'rgba(100,60,200,0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+function gameLoop() {
+    if (gameRunning) {
+        update();
+        draw();
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+function jump() {
+    if (!gameRunning) return;
+    player.velocity = player.jump;
+    createParticles(player.x - 10, player.y + 8, 'rgba(200,200,200,0.5)', 4);
+}
+
+function startGame() {
+    initGame();
+    gameRunning = true;
+    hideAllScreens();
+    document.getElementById('hud').classList.remove('hidden');
+    showZoneLabel();
+    jump();
+}
+
+function initGame() {
+    const upg = save.upgrades;
+    player.x = 80; player.y = 360;
+    player.velocity = 0; player.rotation = 0; player.wingAngle = 0;
+    player.maxHp = 3 + upg.maxHp;
+    player.hp = player.maxHp;
+    player.shielded = Math.random() < upg.shield * 0.25;
+    player.shieldTimer = player.shielded ? 240 : 0;
+    player.magnetTimer = 0; player.slowTimer = 0;
+    player.invincible = 0;
+    player.xp = 0; player.level = 1;
+    player.flawless = true;
+    player.shieldBlocks = 0;
+    player.powerupsCollected = 0;
+    player.runPipes = 0;
+    obstacles = []; coinsList = []; particles = []; powerups = []; boss = null;
+    score = 0; coins = 0; frames = 0;
+    document.getElementById('bossBar').classList.remove('active');
+    updateHUD();
+    initClouds();
+    initStars();
+}
+
+function initClouds() {
+    clouds = [];
+    for (let i = 0; i < 4; i++) {
+        clouds.push({ x: Math.random() * canvas.width, y: Math.random() * 250 + 40,
+            w: Math.random() * 90 + 60, speed: Math.random() * 0.4 + 0.1, alpha: Math.random() * 0.15 + 0.05 });
+    }
+}
+function initStars() {
+    stars = [];
+    for (let i = 0; i < 50; i++) {
+        stars.push({ x: Math.random() * canvas.width, y: Math.random() * groundY,
+            size: Math.random() * 1.5 + 0.5, speed: Math.random() * 0.3 + 0.1, brightness: Math.random() });
+    }
+}
+
+function updateHUD() {
+    const hpBar = document.getElementById('hpBar');
+    hpBar.innerHTML = '';
+    for (let i = 0; i < player.maxHp; i++) {
+        const orb = document.createElement('div');
+        orb.className = 'hp-orb' + (i < player.hp ? ' filled' : '');
+        hpBar.appendChild(orb);
+    }
+    document.getElementById('coinDisplay').textContent = coins;
+    document.getElementById('scoreDisplay').textContent = score;
+    document.getElementById('levelBadge').textContent = `LV.${player.level} HP:${player.hp}/${player.maxHp}`;
+    const needed = player.level * 30;
+    document.getElementById('xpFill').style.width = (player.xp / needed * 100) + '%';
+    document.getElementById('xpText').textContent = `LEVEL ${player.level}`;
+}
+
+function showZoneLabel() {
+    const label = document.getElementById('zoneLabel');
+    label.textContent = ZONES[currentZone].name;
+    label.classList.add('show');
+    setTimeout(() => label.classList.remove('show'), 2500);
+}
+
+function gameOver() {
+    gameRunning = false;
+    save.coins += coins;
+    save.totalCoins += coins;
+    save.totalRuns++;
+    if (score > save.highScore) save.highScore = score;
+
+    if (save.totalRuns >= 1) unlockAchievement('first_flight');
+    if (coins >= 50) unlockAchievement('coin_collector');
+    if (coins >= 100) unlockAchievement('hundred_coins');
+    if (coins >= 200) unlockAchievement('hoarder');
+    if (save.totalCoins >= 500) unlockAchievement('rich');
+    if (save.totalCoins >= 2000) unlockAchievement('wealthy');
+    if (save.totalCoins >= 5000) unlockAchievement('billionaire');
+    if (player.level >= 5) unlockAchievement('max_level');
+    if (player.shieldBlocks >= 3) unlockAchievement('shield_breaker');
+    if (player.powerupsCollected >= 3) unlockAchievement('powerup_collector');
+
+    saveGame();
+
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('deathSubtitle').textContent = ZONES[currentZone].name + ' claims another...';
+    document.getElementById('deathStats').innerHTML = `
+        <div class="play-stat-row"><span>Score</span><span>${score}</span></div>
+        <div class="play-stat-row"><span>Coins</span><span>${coins}</span></div>
+        <div class="play-stat-row"><span>Level</span><span>${player.level}</span></div>
+        <div class="play-stat-row"><span>Total Gold</span><span>${save.coins}</span></div>
+    `;
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+}
+
+function bossDefeated() {
+    gameRunning = false;
+    boss = null;
+    save.coins += coins + 20;
+    save.totalCoins += coins + 20;
+    if (score > save.highScore) save.highScore = score;
+    if (currentZone + 1 >= save.zonesUnlocked) {
+        save.zonesUnlocked = Math.min(currentZone + 2, ZONES.length);
+    }
+
+    if (save.totalRuns === 0) save.totalRuns = 1;
+    unlockAchievement('first_flight');
+    unlockAchievement('boss_slayer');
+    if (currentZone === 0) {
+        const totalUpg = Object.values(save.upgrades).reduce((a,b) => a+b, 0);
+        if (totalUpg === 0) unlockAchievement('beginner_luck');
+    }
+    if (currentZone === 1) unlockAchievement('cavern_clear');
+    if (currentZone === 2) unlockAchievement('waste_clear');
+    if (currentZone === 3) {
+        unlockAchievement('spire_clear');
+        unlockAchievement('zone_master');
+    }
+    if (player.flawless) unlockAchievement('no_damage');
+    if (player.hp === 1) unlockAchievement('comeback_kid');
+    if (coins >= 50) unlockAchievement('coin_collector');
+    if (coins >= 100) unlockAchievement('hundred_coins');
+    if (coins >= 200) unlockAchievement('hoarder');
+    if (save.totalCoins >= 500) unlockAchievement('rich');
+    if (save.totalCoins >= 2000) unlockAchievement('wealthy');
+    if (save.totalCoins >= 5000) unlockAchievement('billionaire');
+    if (player.level >= 5) unlockAchievement('max_level');
+    if (player.shieldBlocks >= 3) unlockAchievement('shield_breaker');
+    if (player.powerupsCollected >= 3) unlockAchievement('powerup_collector');
+    saveGame();
+
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('bossBar').classList.remove('active');
+    document.getElementById('bossVicSub').textContent = ZONES[currentZone].name + ' cleared!';
+    document.getElementById('bossStats').innerHTML = `
+        <div class="play-stat-row"><span>Score</span><span>${score}</span></div>
+        <div class="play-stat-row"><span>Coins</span><span>${coins}</span></div>
+        <div class="play-stat-row"><span>Level</span><span>${player.level}</span></div>
+        <div class="play-stat-row"><span>Bonus</span><span>+20</span></div>
+    `;
+    document.getElementById('bossVictoryScreen').classList.remove('hidden');
+}
+
+function nextZone() {
+    currentZone = Math.min(currentZone + 1, ZONES.length - 1);
+    saveGame();
+    startGame();
+}
+
+// ─── Screens ───
+function hideAllScreens() {
+    document.querySelectorAll('.ui-overlay').forEach(el => el.classList.add('hidden'));
+}
+
+function showStartScreen() {
+    gameRunning = false;
+    hideAllScreens();
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('startScreen').classList.remove('hidden');
+    renderStartScreen();
+}
+
+function renderStartScreen() {
+    const ps = loadProfiles();
+    const p = ps.profiles.find(x => x.id === currentProfileId);
+    document.getElementById('profileDisplay').textContent = p ? `Hero: ${p.name}` : 'Chronicles';
+    document.getElementById('playStats').innerHTML = `
+        <div class="play-stat-row"><span>High Score</span><span>${save.highScore}</span></div>
+        <div class="play-stat-row"><span>Total Runs</span><span>${save.totalRuns}</span></div>
+        <div class="play-stat-row"><span>Gold</span><span>💰 ${save.coins}</span></div>
+        <div class="play-stat-row"><span>Zones</span><span>${save.zonesUnlocked}/4</span></div>
+    `;
+
+    const zsel = document.getElementById('zoneSelect');
+    zsel.innerHTML = '';
+    ZONES.forEach((z, i) => {
+        const unlocked = i < save.zonesUnlocked;
+        const completed = i < save.zonesUnlocked - 1;
+        const isCurrent = i === currentZone;
+        const row = document.createElement('div');
+        row.className = 'zone-row' + (completed ? ' completed' : '') + (isCurrent ? ' current' : '');
+        row.innerHTML = `<div class="zone-dot ${completed ? 'completed' : ''} ${isCurrent ? 'current' : ''}"></div>${z.name}`;
+        if (unlocked) {
+            row.style.cursor = 'pointer';
+            row.onclick = () => { currentZone = i; renderStartScreen(); };
+        }
+        zsel.appendChild(row);
+    });
+}
+
+function showUpgrades() {
+    hideAllScreens();
+    document.getElementById('upgradeScreen').classList.remove('hidden');
+    renderUpgrades();
+}
+
+function renderUpgrades() {
+    document.getElementById('upgradeCoins').textContent = save.coins;
+    const grid = document.getElementById('upgradeGrid');
+    grid.innerHTML = '';
+    Object.keys(UPGRADES).forEach(key => {
+        const u = UPGRADES[key];
+        const lvl = save.upgrades[key];
+        const cost = getUpgradeCost(key);
+        const maxed = lvl >= u.max;
+        const affordable = save.coins >= cost;
+
+        const card = document.createElement('div');
+        card.className = 'upgrade-card' + (maxed ? ' maxed' : '');
+        card.innerHTML = `
+            <div class="upgrade-icon">${u.icon}</div>
+            <div class="upgrade-name">${u.name}</div>
+            <div class="upgrade-desc">${u.desc}</div>
+            <div class="upgrade-cost">${maxed ? 'MAXED' : '💰 ' + cost}</div>
+            <div class="upgrade-level">Level ${lvl}/${u.max}</div>
+        `;
+        if (!maxed && affordable) {
+            card.style.borderColor = '#8b6914';
+            card.onclick = () => buyUpgrade(key);
+        } else if (!maxed && !affordable) {
+            card.style.opacity = '0.6';
+        }
+        grid.appendChild(card);
+    });
+}
+
+function showAchievements() {
+    hideAllScreens();
+    document.getElementById('achScreen').classList.remove('hidden');
+    const list = document.getElementById('achList');
+    list.innerHTML = '';
+    Object.keys(ACHIEVEMENTS).forEach(key => {
+        const a = ACHIEVEMENTS[key];
+        const unlocked = save.achievements[key];
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:8px; margin:4px 0; border-radius:6px; background:' + (unlocked ? 'rgba(40,30,10,0.8)' : 'rgba(15,15,20,0.6)') + '; border:1px solid ' + (unlocked ? '#8b6914' : '#2a1a0a') + ';';
+        row.innerHTML = `
+            <div style="font-size:24px; opacity:${unlocked ? 1 : 0.3};">${a.icon}</div>
+            <div style="flex:1;">
+                <div style="font-size:12px; font-weight:700; color:${unlocked ? '#e8c87a' : '#5a5a50'};">${a.name}</div>
+                <div style="font-size:10px; color:${unlocked ? '#aa9977' : '#4a4a45'};">${a.desc}</div>
+            </div>
+            <div style="font-size:12px; color:${unlocked ? '#44cc66' : '#555'};">${unlocked ? '✓' : '🔒'}</div>
+        `;
+        list.appendChild(row);
+    });
+}
+
+// ─── Profile Management ───
+function showProfilePicker() {
+    gameRunning = false;
+    hideAllScreens();
+    document.getElementById('profileScreen').classList.remove('hidden');
+    document.getElementById('hud').classList.add('hidden');
+    renderProfiles();
+}
+
+function renderProfiles() {
+    const ps = loadProfiles();
+    const list = document.getElementById('profileList');
+    list.innerHTML = '';
+    ps.profiles.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'profile-item' + (p.id === currentProfileId ? ' active' : '');
+        row.innerHTML = `
+            <div class="profile-avatar">${p.id === currentProfileId ? '⚔️' : '🛡️'}</div>
+            <div class="profile-info">
+                <div class="profile-name">${p.name}</div>
+                <div class="profile-meta">HS: ${p.data.highScore || 0} | Zones: ${p.data.zonesUnlocked || 1}/4 | 💰 ${p.data.coins || 0}</div>
+            </div>
+            <div class="profile-actions">
+                ${p.id !== currentProfileId ? `<button class="profile-delete" onclick="event.stopPropagation(); deleteProfile(${p.id}); renderProfiles();">✕</button>` : ''}
+            </div>
+        `;
+        row.onclick = () => switchProfile(p.id);
+        list.appendChild(row);
+    });
+}
+
+function switchProfile(id) {
+    saveGame();
+    const data = loadProfile(id);
+    if (!data) return;
+    const ps = loadProfiles();
+    const p = ps.profiles.find(x => x.id === id);
+    currentProfileId = id;
+    save = data;
+    currentZone = p.lastZone ?? 0;
+    ps.lastProfileId = id;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(ps));
+    showStartScreen();
+}
+
+function createProfile() {
+    const input = document.getElementById('newProfileName');
+    const name = input.value;
+    if (!name.trim()) { input.placeholder = 'Enter a name...'; return; }
+    const ps = loadProfiles();
+    if (ps.profiles.length >= 5) { alert('Maximum 5 heroes reached.'); return; }
+    const id = createNewProfile(name.trim());
+    input.value = '';
+    switchProfile(id);
+}
+
+document.getElementById('newProfileName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') createProfile();
+});
+
+// ─── Controls ───
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        e.preventDefault();
+        if (gameRunning) jump();
+    }
+});
+canvas.addEventListener('mousedown', (e) => { if (gameRunning) jump(); });
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); if (gameRunning) jump(); });
+
+// ─── Init ───
+initClouds();
+initStars();
+renderProfiles();
+gameLoop();
+</script>
+</body>
+</html>
